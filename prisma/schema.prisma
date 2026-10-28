@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model users {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String    @unique
+  password_hash String
+  created_at    DateTime  @default(now()) @db.Timestamptz(6)
+  wallets       wallets[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model wallets {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  asset_code String   @default("USD") @db.VarChar(20)
+  balance    Decimal  @default(0) @db.Decimal(36, 18)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  users      users    @relation(fields: [user_id], references: [id], onUpdate: NoAction, map: "wallets_user_fk")
+
+  transactions transactions[]
+
+  @@unique([user_id, asset_code], map: "wallets_user_asset_unique")
+}
+
+
+
+model transactions {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  wallet_id  String   @db.Uuid
+  type       String   @db.VarChar(30)
+  amount     Decimal  @db.Decimal(36, 18)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+wallet wallets @relation(fields: [wallet_id], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "transactions_wallet_fk")
+
+  @@index([wallet_id, created_at], map: "transactions_wallet_created_idx")
+}
