@@ -15,7 +15,6 @@ model users {
   wallets       wallets[]
 }
 
-/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model wallets {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id    String   @db.Uuid
@@ -23,6 +22,7 @@ model wallets {
   balance    Decimal  @default(0) @db.Decimal(36, 18)
   created_at DateTime @default(now()) @db.Timestamptz(6)
   users      users    @relation(fields: [user_id], references: [id], onUpdate: NoAction, map: "wallets_user_fk")
+  cardNumber String @unique @db.VarChar(12) @map("card_number")
 
   transactions transactions[]
 
