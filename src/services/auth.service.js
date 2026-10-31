@@ -7,6 +7,8 @@ const {
   createWalletWithInitialCredit,
 } = require("../repositories/wallet.repository");
 
+const ApiError = require("../utils/ApiError");
+
 const userRepository = require("../repositories/user.repository");
 
 const register = async (body) => {
@@ -38,8 +40,6 @@ const register = async (body) => {
       try {
         await createWalletWithInitialCredit(tx, newUser.id);
       } catch (error) {
-        console.error("Wallet creation failed:", error);
-
         throw new Error("WALLET_CREATION_FAILED", {
           cause: error,
         });
@@ -56,11 +56,16 @@ const register = async (body) => {
       },
     };
   } catch (error) {
-    if (error.code === "P2002") {
-      throw (409, "Email is already registered");
+    if (
+      error.code === "P2002" &&
+      Array.isArray(error.meta?.target) &&
+      error.meta.target.includes("email")
+    ) {
+      throw new ApiError(409, "Email is already registered");
     }
+
     if (error.message === "WALLET_CREATION_FAILED") {
-      throw (500, "Registration failed: wallet creation failed");
+      throw new ApiError(500, "Registration failed: wallet creation failed");
     }
 
     throw error;
@@ -68,7 +73,7 @@ const register = async (body) => {
 };
 
 const login = async (body) => {
-  const { email, password } = body;
+  const { email, password } = body || {};
 
   if (
     typeof email !== "string" ||
