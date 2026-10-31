@@ -69,6 +69,11 @@ const transfer = async (data, currentUserId) => {
       throw new ApiError(404, "Sender wallet not found");
     }
 
+    if (sender.balance > amount){
+      throw new ApiError(400,"Your account balance is insufficient.");
+      
+    }
+
     const recipient = await walletRepository.findRecipientWallet(
       tx,
       cardNumber,

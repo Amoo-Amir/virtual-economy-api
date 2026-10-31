@@ -2,6 +2,8 @@ const express = require("express");
 const { pool } = require("./config/db");
 const authRouter = require("./routers/auth.route");
 const walletRouter = require("./routers/wallet.route");
+const transactionRouter = require("./routers/transaction.route");
+
 const errorHandler = require("./middlewares/error.middleware");
 
 const app = express();
@@ -33,6 +35,7 @@ app.get("/health", async (req, res) => {
 
 app.use("/api", authRouter);
 app.use("/api", walletRouter);
+app.use("/api", transactionRouter);
 
 app.use(errorHandler);
 
