@@ -1,3 +1,4 @@
+
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
@@ -47,27 +48,40 @@ CREATE UNIQUE INDEX "wallets_user_asset_unique" ON "wallets"("user_id", "asset_c
 CREATE INDEX "transactions_wallet_created_idx" ON "transactions"("wallet_id", "created_at");
 
 -- AddForeignKey
-ALTER TABLE "wallets" ADD CONSTRAINT "wallets_user_fk" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE NO ACTION;
+ALTER TABLE "wallets"
+ADD CONSTRAINT "wallets_user_fk"
+FOREIGN KEY ("user_id")
+REFERENCES "users"("id")
+ON DELETE RESTRICT
+ON UPDATE NO ACTION;
 
 -- AddForeignKey
-ALTER TABLE "transactions" ADD CONSTRAINT "transactions_wallet_fk" FOREIGN KEY ("wallet_id") REFERENCES "wallets"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "transactions"
+ADD CONSTRAINT "transactions_wallet_fk"
+FOREIGN KEY ("wallet_id")
+REFERENCES "wallets"("id")
+ON DELETE RESTRICT
+ON UPDATE CASCADE;
 
+-- Wallet balance must never be negative
 ALTER TABLE "wallets"
 ADD CONSTRAINT "wallets_balance_non_negative"
 CHECK ("balance" >= 0);
 
+-- Transaction amount must be positive
 ALTER TABLE "transactions"
 ADD CONSTRAINT "transactions_amount_positive"
 CHECK ("amount" > 0);
 
+-- Only allowed transaction types
 ALTER TABLE "transactions"
 ADD CONSTRAINT "transactions_type_valid"
 CHECK (
-  "type" IN (
-    'INITIAL_CREDIT',
-    'DEPOSIT',
-    'WITHDRAWAL',
-    'TRANSFER_IN',
-    'TRANSFER_OUT'
-  )
+    "type" IN (
+        'INITIAL_CREDIT',
+        'DEPOSIT',
+        'WITHDRAWAL',
+        'TRANSFER_IN',
+        'TRANSFER_OUT'
+    )
 );
