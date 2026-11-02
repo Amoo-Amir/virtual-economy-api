@@ -40,6 +40,8 @@ const register = async (body) => {
       try {
         await createWalletWithInitialCredit(tx, newUser.id);
       } catch (error) {
+        console.error("Original wallet error:", error);
+
         throw new Error("WALLET_CREATION_FAILED", {
           cause: error,
         });

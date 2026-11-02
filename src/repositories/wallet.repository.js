@@ -4,26 +4,62 @@ const generateCardNumber = require("../utils/generateCardNumber");
 
 const INITIAL_CREDIT = 200;
 
+
 async function createWalletWithInitialCredit(tx, userId) {
   const wallet = await tx.wallets.create({
     data: {
       user_id: userId,
       asset_code: "USD",
       cardNumber: generateCardNumber(),
-      balance: INITIAL_CREDIT,
+      balance: 0,
     },
   });
 
-  await tx.transactions.create({
+  const treasury = await tx.system_accounts.findUnique({
+    where: {
+      code: process.env.GAME_TREASURY_CODE,
+    },
+  });
+
+  if (!treasury) {
+    throw new Error("GAME_TREASURY account not found");
+  }
+
+  const transaction = await tx.transactions.create({
     data: {
-      wallet_id: wallet.id,
       type: "INITIAL_CREDIT",
-      amount: INITIAL_CREDIT,
+      entries: {
+        create: [
+          {
+            system_account_id: treasury.id,
+            entry_type: "DEBIT",
+            amount: INITIAL_CREDIT,
+          },
+          {
+            wallet_id: wallet.id,
+            entry_type: "CREDIT",
+            amount: INITIAL_CREDIT,
+          },
+        ],
+      },
     },
   });
 
-  return wallet;
+  // 4. Update wallet balance
+  const updatedWallet = await tx.wallets.update({
+    where: {
+      id: wallet.id,
+    },
+    data: {
+      balance: {
+        increment: INITIAL_CREDIT,
+      },
+    },
+  });
+
+  return updatedWallet;
 }
+
 
 const getUserWalletById = async (userId) => {
   return prisma.wallets.findMany({
