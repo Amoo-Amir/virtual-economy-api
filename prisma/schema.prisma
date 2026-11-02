@@ -7,38 +7,185 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model users {
-  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email         String    @unique
-  password_hash String
-  created_at    DateTime  @default(now()) @db.Timestamptz(6)
-  wallets       wallets[]
+// =====================================
+// ENUMS
+// =====================================
+
+enum TransactionType {
+  INITIAL_CREDIT
+  TRANSFER
+  MARKET_PURCHASE
+  ADMIN_CREDIT
+  SYSTEM_ADJUSTMENT
 }
+
+enum EntryType {
+  DEBIT
+  CREDIT
+}
+
+enum ListingStatus {
+  ACTIVE
+  SOLD
+  CANCELLED
+}
+
+// =====================================
+// USERS
+// =====================================
+
+model users {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email         String   @unique
+  password_hash String
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  wallets wallets[]
+
+  initiated_transactions transactions[] @relation("TransactionInitiator")
+
+  inventories inventories[]
+
+  listings market_listings[] @relation("ListingSeller")
+
+  purchases market_orders[] @relation("OrderBuyer")
+
+  sales market_orders[] @relation("OrderSeller")
+}
+
+// =====================================
+// WALLETS
+// =====================================
 
 model wallets {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id    String   @db.Uuid
   asset_code String   @default("USD") @db.VarChar(20)
   balance    Decimal  @default(0) @db.Decimal(36, 18)
+  cardNumber String   @unique @map("card_number") @db.VarChar(12)
   created_at DateTime @default(now()) @db.Timestamptz(6)
-  users      users    @relation(fields: [user_id], references: [id], onUpdate: NoAction, map: "wallets_user_fk")
-  cardNumber String @unique @db.VarChar(12) @map("card_number")
 
-  transactions transactions[]
+  users   users                 @relation(fields: [user_id], references: [id], onDelete: Restrict)
+  entries transaction_entries[]
 
   @@unique([user_id, asset_code], map: "wallets_user_asset_unique")
 }
 
+// =====================================
+// SYSTEM ACCOUNTS
+// =====================================
 
-
-model transactions {
+model system_accounts {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  wallet_id  String   @db.Uuid
-  type       String   @db.VarChar(30)
-  amount     Decimal  @db.Decimal(36, 18)
+  code       String   @unique @db.VarChar(50)
+  name       String   @db.VarChar(100)
   created_at DateTime @default(now()) @db.Timestamptz(6)
 
-wallet wallets @relation(fields: [wallet_id], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "transactions_wallet_fk")
+  entries transaction_entries[]
+}
 
-  @@index([wallet_id, created_at], map: "transactions_wallet_created_idx")
+// =====================================
+// TRANSACTIONS
+// =====================================
+
+model transactions {
+  id                   String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  initiated_by_user_id String?         @db.Uuid
+  type                 TransactionType
+  created_at           DateTime        @default(now()) @db.Timestamptz(6)
+
+  initiated_by users? @relation("TransactionInitiator", fields: [initiated_by_user_id], references: [id], onDelete: Restrict)
+
+  entries transaction_entries[]
+
+  market_order market_orders?
+}
+
+
+
+model transaction_entries {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  transaction_id    String    @db.Uuid
+  wallet_id         String?   @db.Uuid
+  system_account_id String?   @db.Uuid
+  entry_type        EntryType
+  amount            Decimal   @db.Decimal(36, 18)
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+
+  transaction    transactions     @relation(fields: [transaction_id], references: [id], onDelete: Restrict)
+  wallet         wallets?         @relation(fields: [wallet_id], references: [id], onDelete: Restrict)
+  system_account system_accounts? @relation(fields: [system_account_id], references: [id], onDelete: Restrict)
+
+  @@index([transaction_id])
+  @@index([wallet_id, created_at])
+  @@index([system_account_id])
+}
+
+
+
+model items {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  description String?
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  inventories inventories[]
+  listings    market_listings[]
+}
+
+
+
+model inventories {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String   @db.Uuid
+  item_id    String   @db.Uuid
+  quantity   Int      @default(0)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @updatedAt @db.Timestamptz(6)
+
+  user users @relation(fields: [user_id], references: [id], onDelete: Restrict)
+  item items @relation(fields: [item_id], references: [id], onDelete: Restrict)
+
+  @@unique([user_id, item_id])
+}
+
+
+
+model market_listings {
+  id         String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  seller_id  String        @db.Uuid
+  item_id    String        @db.Uuid
+  quantity   Int
+  unit_price Decimal       @db.Decimal(36, 18)
+  status     ListingStatus @default(ACTIVE)
+  created_at DateTime      @default(now()) @db.Timestamptz(6)
+  updated_at DateTime      @updatedAt @db.Timestamptz(6)
+
+  seller users @relation("ListingSeller", fields: [seller_id], references: [id], onDelete: Restrict)
+  item   items @relation(fields: [item_id], references: [id], onDelete: Restrict)
+
+  order market_orders?
+
+  @@index([status, created_at])
+  @@index([seller_id])
+}
+
+
+
+model market_orders {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  listing_id     String   @unique @db.Uuid
+  buyer_id       String   @db.Uuid
+  seller_id      String   @db.Uuid
+  transaction_id String   @unique @db.Uuid
+  quantity       Int
+  unit_price     Decimal  @db.Decimal(36, 18)
+  total_price    Decimal  @db.Decimal(36, 18)
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+
+  listing     market_listings @relation(fields: [listing_id], references: [id], onDelete: Restrict)
+  buyer       users           @relation("OrderBuyer", fields: [buyer_id], references: [id], onDelete: Restrict)
+  seller      users           @relation("OrderSeller", fields: [seller_id], references: [id], onDelete: Restrict)
+  transaction transactions    @relation(fields: [transaction_id], references: [id], onDelete: Restrict)
 }
