@@ -1,9 +1,7 @@
-
 const prisma = require("../config/prisma");
 const generateCardNumber = require("../utils/generateCardNumber");
 
 const INITIAL_CREDIT = 200;
-
 
 async function createWalletWithInitialCredit(tx, userId) {
   const wallet = await tx.wallets.create({
@@ -60,7 +58,6 @@ async function createWalletWithInitialCredit(tx, userId) {
   return updatedWallet;
 }
 
-
 const getUserWalletById = async (userId) => {
   return prisma.wallets.findMany({
     where: { user_id: userId },
@@ -89,7 +86,6 @@ const MoneyTransfer = async (cardNum) => {
   });
 };
 
-
 const findSenderWallet = async (tx, userId) => {
   return tx.wallets.findFirst({
     where: {
@@ -99,13 +95,11 @@ const findSenderWallet = async (tx, userId) => {
   });
 };
 
-
 const findRecipientWallet = async (tx, cardNumber) => {
   return tx.wallets.findUnique({
     where: { cardNumber },
   });
 };
-
 
 const deductBalance = async (tx, walletId, amount) => {
   return tx.wallets.updateMany({
@@ -119,7 +113,6 @@ const deductBalance = async (tx, walletId, amount) => {
   });
 };
 
-
 const addBalance = async (tx, walletId, amount) => {
   return tx.wallets.update({
     where: { id: walletId },
@@ -129,12 +122,36 @@ const addBalance = async (tx, walletId, amount) => {
   });
 };
 
-const createTransaction = async (tx, walletId, type, amount) => {
+const createTransferTransaction = async (
+  tx,
+  senderId,
+  senderWalletId,
+  recipientWalletId,
+  amount,
+) => {
   return tx.transactions.create({
     data: {
-      wallet_id: walletId,
-      type,
-      amount,
+      initiated_by_user_id: senderId,
+      type: "TRANSFER",
+      entries: {
+        create: [
+          {
+            wallet_id: senderWalletId,
+            entry_type: "DEBIT",
+            amount,
+          },
+          {
+            wallet_id: recipientWalletId,
+            entry_type: "CREDIT",
+            amount,
+          },
+        ],
+      },
+    },
+    select: {
+      id: true,
+      type: true,
+      created_at: true,
     },
   });
 };
@@ -147,5 +164,5 @@ module.exports = {
   findRecipientWallet,
   deductBalance,
   addBalance,
-  createTransaction,
+  createTransferTransaction,
 };

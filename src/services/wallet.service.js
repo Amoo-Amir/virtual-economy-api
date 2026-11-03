@@ -1,4 +1,3 @@
-
 const prisma = require("../config/prisma");
 const { Prisma } = require("@prisma/client");
 
@@ -38,11 +37,7 @@ const resolveCard = async (cardNum, currentUserId) => {
 const transfer = async (data, currentUserId) => {
   const { cardNumber, amount } = data || {};
 
- 
-  if (
-    typeof cardNumber !== "string" ||
-    !/^\d{12}$/.test(cardNumber)
-  ) {
+  if (typeof cardNumber !== "string" || !/^\d{12}$/.test(cardNumber)) {
     throw new ApiError(400, "Invalid card number");
   }
 
@@ -60,18 +55,10 @@ const transfer = async (data, currentUserId) => {
   }
 
   const result = await prisma.$transaction(async (tx) => {
-    const sender = await walletRepository.findSenderWallet(
-      tx,
-      currentUserId,
-    );
+    const sender = await walletRepository.findSenderWallet(tx, currentUserId);
 
     if (!sender) {
       throw new ApiError(404, "Sender wallet not found");
-    }
-
-    if (sender.balance > amount){
-      throw new ApiError(400,"Your account balance is insufficient.");
-      
     }
 
     const recipient = await walletRepository.findRecipientWallet(
@@ -107,21 +94,13 @@ const transfer = async (data, currentUserId) => {
       transferAmount,
     );
 
-    const senderTransaction =
-      await walletRepository.createTransaction(
-        tx,
-        sender.id,
-        "TRANSFER_OUT",
-        transferAmount,
-      );
-
-    const recipientTransaction =
-      await walletRepository.createTransaction(
-        tx,
-        recipient.id,
-        "TRANSFER_IN",
-        transferAmount,
-      );
+    const transaction = await walletRepository.createTransferTransaction(
+      tx,
+      currentUserId,
+      sender.id,
+      recipient.id,
+      transferAmount,
+    );
 
     const updatedSender = await tx.wallets.findUnique({
       where: {
@@ -136,11 +115,7 @@ const transfer = async (data, currentUserId) => {
       amount: transferAmount.toString(),
       assetCode: sender.asset_code,
       senderBalance: updatedSender.balance.toString(),
-      recipientBalance: updatedRecipient.balance.toString(),
-      transactions: {
-        outgoing: senderTransaction.id,
-        incoming: recipientTransaction.id,
-      },
+      transactionId: transaction.id,
     };
   });
 
