@@ -5,6 +5,7 @@ const walletRouter = require("./routers/wallet.route");
 const transactionRouter = require("./routers/transaction.route");
 const itemRouter = require("./routers/items.route");
 const inventoryRouter = require("./routers/inventory.route");
+const marketRouter = require("./routers/market.route");
 
 const errorHandler = require("./middlewares/error.middleware");
 
@@ -40,6 +41,7 @@ app.use("/api", walletRouter);
 app.use("/api", transactionRouter);
 app.use("/api", itemRouter);
 app.use("/api", inventoryRouter);
+app.use("/api", marketRouter);
 
 app.use(errorHandler);
 
