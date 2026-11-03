@@ -1,4 +1,3 @@
-
 const prisma = require("../config/prisma");
 
 const getUserInventory = async (userId, itemId, tx = prisma) => {
@@ -18,19 +17,6 @@ const getUserInventory = async (userId, itemId, tx = prisma) => {
           name: true,
           is_active: true,
         },
-      },
-    },
-  });
-};
-
-const decreaseInventory = async (inventoryId, quantity, tx = prisma) => {
-  return await tx.inventories.update({
-    where: {
-      id: inventoryId,
-    },
-    data: {
-      quantity: {
-        decrement: quantity,
       },
     },
   });
@@ -63,6 +49,5 @@ const createListing = async (data, tx = prisma) => {
 
 module.exports = {
   getUserInventory,
-  decreaseInventory,
   createListing,
 };
