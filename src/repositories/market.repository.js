@@ -47,7 +47,47 @@ const createListing = async (data, tx = prisma) => {
   });
 };
 
+const getActiveListings = async ({ skip, take, where, orderBy }) => {
+  const [listings, totalItems] = await prisma.$transaction([
+    prisma.market_listings.findMany({
+      where,
+      skip,
+      take,
+      orderBy,
+      select: {
+        id: true,
+        seller_id: true,
+        item_id: true,
+        quantity: true,
+        unit_price: true,
+        status: true,
+        created_at: true,
+        item: {
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+        },
+        seller: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    }),
+
+    prisma.market_listings.count({ where }),
+  ]);
+
+  return {
+    listings,
+    totalItems,
+  };
+};
+
 module.exports = {
   getUserInventory,
   createListing,
+  getActiveListings,
 };

@@ -13,4 +13,6 @@ router.post(
   marketController.createListing,
 );
 
+router.get("/market/listings", marketController.getListings);
+
 module.exports = router;

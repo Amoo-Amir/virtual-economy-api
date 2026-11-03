@@ -16,6 +16,20 @@ const createListing = async (req, res) => {
   });
 };
 
+const getListings = async (req, res, next) => {
+  try {
+    const result = await marketService.getListings(req.query);
+
+    return res.status(200).json({
+      status: "ok",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createListing,
+  getListings,
 };

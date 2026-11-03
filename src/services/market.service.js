@@ -76,6 +76,112 @@ const createListing = async (userId, data) => {
   });
 };
 
+const getListings = async (query) => {
+  const {
+    page = 1,
+    limit = 10,
+    search,
+    itemId,
+    minPrice,
+    maxPrice,
+    sortBy = "created_at",
+    order = "desc",
+  } = query;
+
+  const currentPage = Number(page);
+  const pageLimit = Number(limit);
+
+  if (
+    !Number.isInteger(currentPage) ||
+    currentPage < 1 ||
+    !Number.isInteger(pageLimit) ||
+    pageLimit < 1 ||
+    pageLimit > 50
+  ) {
+    throw new ApiError(400, "Invalid pagination parameters");
+  }
+
+  const allowedSortFields = ["created_at", "unit_price"];
+
+  if (!allowedSortFields.includes(sortBy) || !["asc", "desc"].includes(order)) {
+    throw new ApiError(400, "Invalid sorting parameters");
+  }
+
+  const where = {
+    status: "ACTIVE",
+  };
+
+  if (search) {
+    where.item = {
+      name: {
+        contains: search.trim(),
+        mode: "insensitive",
+      },
+    };
+  }
+
+  if (itemId) {
+    where.item_id = itemId;
+  }
+
+  if (minPrice !== undefined || maxPrice !== undefined) {
+    where.unit_price = {};
+
+    try {
+      if (minPrice !== undefined) {
+        where.unit_price.gte = new Prisma.Decimal(minPrice);
+      }
+
+      if (maxPrice !== undefined) {
+        where.unit_price.lte = new Prisma.Decimal(maxPrice);
+      }
+    } catch {
+      throw new ApiError(400, "Invalid price filter");
+    }
+
+    if (
+      where.unit_price.gte &&
+      where.unit_price.lte &&
+      where.unit_price.gte.gt(where.unit_price.lte)
+    ) {
+      throw new ApiError(400, "minPrice cannot be greater than maxPrice");
+    }
+  }
+
+  const skip = (currentPage - 1) * pageLimit;
+
+  const result = await marketRepository.getActiveListings({
+    skip,
+    take: pageLimit,
+    where,
+    orderBy: {
+      [sortBy]: order,
+    },
+  });
+
+  return {
+    listings: result.listings.map((listing) => ({
+      id: listing.id,
+      item: listing.item,
+      seller: {
+        id: listing.seller.id,
+      },
+      quantity: listing.quantity,
+      unitPrice: listing.unit_price.toString(),
+      status: listing.status,
+      createdAt: listing.created_at,
+    })),
+
+    pagination: {
+      currentPage,
+      limit: pageLimit,
+      totalItems: result.totalItems,
+      totalPages: Math.ceil(result.totalItems / pageLimit),
+    },
+  };
+};
+
 module.exports = {
   createListing,
+  getListings,
 };
