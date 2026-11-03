@@ -7,9 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// =====================================
-// ENUMS
-// =====================================
+
 
 enum TransactionType {
   INITIAL_CREDIT
@@ -30,9 +28,7 @@ enum ListingStatus {
   CANCELLED
 }
 
-// =====================================
-// USERS
-// =====================================
+
 
 model users {
   id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -53,9 +49,7 @@ model users {
   sales market_orders[] @relation("OrderSeller")
 }
 
-// =====================================
-// WALLETS
-// =====================================
+
 
 model wallets {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -71,9 +65,7 @@ model wallets {
   @@unique([user_id, asset_code], map: "wallets_user_asset_unique")
 }
 
-// =====================================
-// SYSTEM ACCOUNTS
-// =====================================
+
 
 model system_accounts {
   id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -84,9 +76,7 @@ model system_accounts {
   entries transaction_entries[]
 }
 
-// =====================================
-// TRANSACTIONS
-// =====================================
+
 
 model transactions {
   id                   String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
