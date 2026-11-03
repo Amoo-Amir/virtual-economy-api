@@ -13,17 +13,13 @@ const getActiveItems = async (query) => {
     page < 1 ||
     limit < 1
   ) {
-    const error = new Error("Invalid pagination parameters");
-    error.statusCode = 400;
-    throw error;
+    throw new ApiError(400, "Invalid pagination parameters");
   }
 
   limit = Math.min(limit, 50);
 
   if (typeof search !== "string") {
-    const error = new Error("Search must be a string");
-    error.statusCode = 400;
-    throw error;
+    throw new ApiError(400, "Search must be a string");
   }
 
   search = search.trim();
