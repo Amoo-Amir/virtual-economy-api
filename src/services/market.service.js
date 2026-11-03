@@ -14,17 +14,21 @@ const createListing = async (userId, data) => {
     throw new ApiError(400, "Quantity must be a positive integer");
   }
 
-  if (
-    unitPrice === undefined ||
-    unitPrice === null ||
-    !Number.isFinite(Number(unitPrice)) ||
-    Number(unitPrice) <= 0
-  ) {
-    throw new ApiError(400, "Unit price must be greater than zero");
+  if (typeof unitPrice !== "string") {
+    throw new ApiError(400, "Unit price must be a string");
   }
 
-  const price = new Prisma.Decimal(String(unitPrice));
+  let price;
 
+  try {
+    price = new Prisma.Decimal(unitPrice);
+  } catch {
+    throw new ApiError(400, "Invalid unit price");
+  }
+
+  if (!price.isFinite() || !price.gt(0)) {
+    throw new ApiError(400, "Unit price must be greater than zero");
+  }
   return await prisma.$transaction(async (tx) => {
     const inventory = await marketRepository.getUserInventory(
       userId,
