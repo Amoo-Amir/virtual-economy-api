@@ -7,11 +7,16 @@ const itemRouter = require("./routers/items.route");
 const inventoryRouter = require("./routers/inventory.route");
 const marketRouter = require("./routers/market.route");
 
+const swaggerUi = require("swagger-ui-express");
+const swaggerSpec = require("./config/swagger");
+
 const errorHandler = require("./middlewares/error.middleware");
 
 const app = express();
 
 app.use(express.json());
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.get("/health", async (req, res) => {
   try {
