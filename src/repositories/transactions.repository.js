@@ -40,4 +40,41 @@ const getMyTransactions = async (walletId, page, limit) => {
   };
 };
 
-module.exports = { getMyTransactions };
+const createMarketPurchaseTransaction = async (
+  tx,
+  buyerId,
+  buyerWalletId,
+  sellerWalletId,
+  amount,
+) => {
+  return tx.transactions.create({
+    data: {
+      initiated_by_user_id: buyerId,
+      type: "MARKET_PURCHASE",
+      entries: {
+        create: [
+          {
+            wallet_id: buyerWalletId,
+            entry_type: "DEBIT",
+            amount,
+          },
+          {
+            wallet_id: sellerWalletId,
+            entry_type: "CREDIT",
+            amount,
+          },
+        ],
+      },
+    },
+    select: {
+      id: true,
+      type: true,
+      created_at: true,
+    },
+  });
+};
+
+module.exports = {
+  getMyTransactions,
+  createMarketPurchaseTransaction,
+};

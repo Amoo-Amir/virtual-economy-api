@@ -29,7 +29,17 @@ const getListings = async (req, res, next) => {
   }
 };
 
+const purchaseListing = async (req, res) => {
+  const result = await marketService.purchaseListing(
+    req.user.id,
+    req.params.listingId,
+  );
+
+  return res.status(200).json(result);
+};
+
 module.exports = {
   createListing,
   getListings,
+  purchaseListing,
 };

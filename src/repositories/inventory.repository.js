@@ -40,4 +40,28 @@ const getMyInventory = async (userId) => {
   };
 };
 
-module.exports = { getMyInventory };
+const addItemsToInventory = async (tx, userId, itemId, quantity) => {
+  return tx.inventories.upsert({
+    where: {
+      user_id_item_id: {
+        user_id: userId,
+        item_id: itemId,
+      },
+    },
+    create: {
+      user_id: userId,
+      item_id: itemId,
+      quantity,
+    },
+    update: {
+      quantity: {
+        increment: quantity,
+      },
+    },
+  });
+};
+
+module.exports = {
+  getMyInventory,
+  addItemsToInventory,
+};

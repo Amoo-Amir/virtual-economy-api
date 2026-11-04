@@ -156,6 +156,52 @@ const createTransferTransaction = async (
   });
 };
 
+const findUserUsdWallet = async (tx, userId) => {
+  return tx.wallets.findUnique({
+    where: {
+      user_id_asset_code: {
+        user_id: userId,
+        asset_code: "USD",
+      },
+    },
+    select: {
+      id: true,
+      user_id: true,
+      asset_code: true,
+      balance: true,
+    },
+  });
+};
+
+const debitBalanceIfEnough = async (tx, walletId, amount) => {
+  return tx.wallets.updateMany({
+    where: {
+      id: walletId,
+      balance: {
+        gte: amount,
+      },
+    },
+    data: {
+      balance: {
+        decrement: amount,
+      },
+    },
+  });
+};
+
+const creditBalance = async (tx, walletId, amount) => {
+  return tx.wallets.update({
+    where: {
+      id: walletId,
+    },
+    data: {
+      balance: {
+        increment: amount,
+      },
+    },
+  });
+};
+
 module.exports = {
   createWalletWithInitialCredit,
   getUserWalletById,
@@ -165,4 +211,7 @@ module.exports = {
   deductBalance,
   addBalance,
   createTransferTransaction,
+  findUserUsdWallet,
+  debitBalanceIfEnough,
+  creditBalance,
 };

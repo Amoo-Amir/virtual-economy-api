@@ -15,4 +15,10 @@ router.post(
 
 router.get("/market/listings", marketController.getListings);
 
+router.post(
+  "/market/listings/:listingId/purchase",
+  authenticate,
+  marketController.purchaseListing,
+);
 module.exports = router;
+// /api/market/listings/:listingId/purchase

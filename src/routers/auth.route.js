@@ -19,6 +19,6 @@ router.post(
 router.post("/auth/login", validate(loginSchema), authcontroller.login);
 
 router.get("/auth/profile", authenticate, authcontroller.me);
-// router.get("/auth/:userId", authenticate, authcontroller.getUserById);
+router.get("/auth/:userId", authenticate, authcontroller.getUserById);
 
 module.exports = router;

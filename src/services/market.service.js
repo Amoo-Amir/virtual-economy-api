@@ -1,6 +1,13 @@
 const { Prisma } = require("@prisma/client");
 const prisma = require("../config/prisma");
+
 const marketRepository = require("../repositories/market.repository");
+const userRepository = require("../repositories/user.repository");
+const walletRipository = require("../repositories/wallet.repository");
+const inventoryRepository = require("../repositories/inventory.repository");
+const transactionRepository = require("../repositories/transactions.repository");
+const walletRepository = require("../repositories/wallet.repository");
+
 const ApiError = require("../utils/ApiError");
 
 const createListing = async (userId, data) => {
@@ -181,7 +188,116 @@ const getListings = async (query) => {
   };
 };
 
+const purchaseListing = async (buyerId, listingId) => {
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        const listing = await marketRepository.getActiveListingById(
+          tx,
+          listingId,
+        );
+
+        if (!listing) {
+          throw new ApiError(404, "Listing not found");
+        }
+
+        if (listing.seller_id === buyerId) {
+          throw new ApiError(400, "You cannot buy your own listing");
+        }
+
+        if (!listing.item.is_active) {
+          throw new ApiError(409, "This item is no longer available");
+        }
+
+        const totalPrice = listing.unit_price.mul(listing.quantity);
+
+        const claimed = await marketRepository.claimListing(tx, listingId);
+
+        if (claimed.count !== 1) {
+          throw new ApiError(409, "Listing is no longer available");
+        }
+
+        const buyerWallet = await walletRepository.findUserUsdWallet(
+          tx,
+          buyerId,
+        );
+
+        const sellerWallet = await walletRepository.findUserUsdWallet(
+          tx,
+          listing.seller_id,
+        );
+
+        if (!buyerWallet || !sellerWallet) {
+          throw new ApiError(404, "Wallet not found");
+        }
+
+        const debit = await walletRepository.debitBalanceIfEnough(
+          tx,
+          buyerWallet.id,
+          totalPrice,
+        );
+
+        if (debit.count !== 1) {
+          throw new ApiError(400, "Insufficient balance");
+        }
+
+        await walletRepository.creditBalance(tx, sellerWallet.id, totalPrice);
+
+        await inventoryRepository.addItemsToInventory(
+          tx,
+          buyerId,
+          listing.item_id,
+          listing.quantity,
+        );
+
+        const transaction =
+          await transactionRepository.createMarketPurchaseTransaction(
+            tx,
+            buyerId,
+            buyerWallet.id,
+            sellerWallet.id,
+            totalPrice,
+          );
+
+        const order = await marketRepository.createMarketOrder(tx, {
+          listingId: listing.id,
+          buyerId,
+          sellerId: listing.seller_id,
+          transactionId: transaction.id,
+          quantity: listing.quantity,
+          unitPrice: listing.unit_price,
+          totalPrice,
+        });
+
+        return {
+          listingId: listing.id,
+          orderId: order.id,
+          transactionId: transaction.id,
+          item: {
+            id: listing.item.id,
+            name: listing.item.name,
+            quantity: listing.quantity,
+          },
+          totalPrice: totalPrice.toString(),
+          assetCode: buyerWallet.asset_code,
+          status: "SOLD",
+        };
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      },
+    );
+  } catch (error) {
+    if (error.code === "P2034") {
+      throw new ApiError(409, "Purchase conflict. Please try again");
+    }
+
+    throw error;
+  }
+};
+
 module.exports = {
   createListing,
   getListings,
+  purchaseListing,
 };
