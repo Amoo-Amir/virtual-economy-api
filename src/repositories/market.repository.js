@@ -143,6 +143,20 @@ const createMarketOrder = async (tx, data) => {
     },
   });
 };
+
+const cancelListing = async (tx, listingId, sellerId) => {
+  return tx.market_listings.updateMany({
+    where: {
+      id: listingId,
+      seller_id: sellerId,
+      status: "ACTIVE",
+    },
+    data: {
+      status: "CANCELLED",
+    },
+  });
+};
+
 module.exports = {
   getUserInventory,
   createListing,
@@ -150,4 +164,5 @@ module.exports = {
   getActiveListingById,
   claimListing,
   createMarketOrder,
+  cancelListing
 };

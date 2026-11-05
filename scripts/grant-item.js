@@ -4,16 +4,12 @@ const prisma = require("../src/config/prisma");
 
 const grantItem = async () => {
   try {
-    // Change this to the target user's email
-    const userEmail = "amirmahdi2@gmail.com";
+    const userEmail = "amirmahdi12@gmail.com";
 
-    // Item to add to the user's inventory
     const itemName = "Golden Shield";
 
-    // Quantity to assign
     const quantity = 5;
 
-    // Find user
     const user = await prisma.users.findUnique({
       where: {
         email: userEmail,
@@ -24,7 +20,6 @@ const grantItem = async () => {
       throw new Error("User not found");
     }
 
-    // Find item
     const item = await prisma.items.findUnique({
       where: {
         name: itemName,
@@ -35,7 +30,6 @@ const grantItem = async () => {
       throw new Error("Item not found");
     }
 
-    // Create or update inventory
     const inventory = await prisma.inventories.upsert({
       where: {
         user_id_item_id: {

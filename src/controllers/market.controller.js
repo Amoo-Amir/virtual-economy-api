@@ -38,8 +38,18 @@ const purchaseListing = async (req, res) => {
   return res.status(200).json(result);
 };
 
+const cancelListing = async (req, res) => {
+  const result = await marketService.cancelListing(
+    req.params.listingId,
+    req.user.id,
+  );
+
+  return res.status(200).json(result)
+};
+
 module.exports = {
   createListing,
   getListings,
   purchaseListing,
+  cancelListing,
 };

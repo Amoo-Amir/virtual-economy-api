@@ -20,5 +20,11 @@ router.post(
   authenticate,
   marketController.purchaseListing,
 );
+
+router.post(
+  "/market/listings/:listingId/cancel",
+  authenticate,
+  marketController.cancelListing,
+);
 module.exports = router;
 // /api/market/listings/:listingId/purchase

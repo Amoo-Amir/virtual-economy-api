@@ -296,8 +296,64 @@ const purchaseListing = async (buyerId, listingId) => {
   }
 };
 
+const cancelListing = async (listingId, userId) => {
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        const listedItem = await marketRepository.getActiveListingById(
+          tx,
+          listingId,
+        );
+
+        if (!listedItem) {
+          throw new ApiError(404, "Listing not found");
+        }
+
+        if (listedItem.seller_id !== userId) {
+          throw new ApiError(403, "You can only cancel your own listing");
+        }
+
+        const cancelled = await marketRepository.cancelListing(
+          tx,
+          listingId,
+          userId,
+        );
+
+        if (cancelled.count !== 1) {
+          throw new ApiError(409, "Listing is no longer available");
+        }
+
+        await inventoryRepository.addItemsToInventory(
+          tx,
+          userId,
+          listedItem.item_id,
+          listedItem.quantity,
+        );
+
+        return {
+          listingId: listedItem.id,
+          status: "CANCELLED",
+          returnedItem: {
+            itemId: listedItem.item_id,
+            quantity: listedItem.quantity,
+          },
+        };
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      },
+    );
+  } catch (error) {
+    if (error.code === "P2034") {
+      throw new ApiError(409, "Cancellation conflict. Please try again");
+    }
+
+    throw error;
+  }
+};
 module.exports = {
   createListing,
   getListings,
   purchaseListing,
+  cancelListing,
 };
