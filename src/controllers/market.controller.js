@@ -58,10 +58,21 @@ const getMyListings = async (req, res) => {
   return res.status(200).json(result);
 };
 
+const getMyOrders = async (req, res) => {
+  const result = await marketService.getMyOrders(
+    req.user.id,
+    req.query.page,
+    req.query.limit,
+  );
+
+  return res.status(200).json(result);
+};
+
 module.exports = {
   createListing,
   getListings,
   purchaseListing,
   cancelListing,
   getMyListings,
+  getMyOrders,
 };

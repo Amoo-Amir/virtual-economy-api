@@ -389,10 +389,52 @@ const getMyListings = async (userId, page = 1, limit = 10, status) => {
   };
 };
 
+const getMyOrders = async (userId, page = 1, limit = 10) => {
+  page = Number(page);
+  limit = Number(limit);
+
+  if (!Number.isInteger(page) || page < 1) {
+    throw new ApiError(400, "Invalid page");
+  }
+
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw new ApiError(400, "Invalid limit");
+  }
+
+  const { orders, total } = await marketRepository.getMyOrders(
+    userId,
+    page,
+    limit,
+  );
+
+  const data = orders.map((order) => ({
+    id: order.id,
+    listingId: order.listing_id,
+    item: order.listing.item,
+    seller: order.seller,
+    quantity: order.quantity,
+    unitPrice: order.unit_price.toString(),
+    totalPrice: order.total_price.toString(),
+    createdAt: order.created_at,
+  }));
+
+  return {
+    success: true,
+    data,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+};
+
 module.exports = {
   createListing,
   getListings,
   purchaseListing,
   cancelListing,
   getMyListings,
+  getMyOrders,
 };

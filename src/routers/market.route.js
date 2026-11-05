@@ -29,5 +29,7 @@ router.get("/market/listings", marketController.getListings);
 
 router.get("/market/my-listings", authenticate, marketController.getMyListings);
 
+router.get("/market/my-orders", authenticate, marketController.getMyOrders);
+
 module.exports = router;
 // /api/market/listings/:listingId/purchase
