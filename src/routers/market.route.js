@@ -13,8 +13,6 @@ router.post(
   marketController.createListing,
 );
 
-router.get("/market/listings", marketController.getListings);
-
 router.post(
   "/market/listings/:listingId/purchase",
   authenticate,
@@ -26,5 +24,10 @@ router.post(
   authenticate,
   marketController.cancelListing,
 );
+
+router.get("/market/listings", marketController.getListings);
+
+router.get("/market/my-listings", authenticate, marketController.getMyListings);
+
 module.exports = router;
 // /api/market/listings/:listingId/purchase

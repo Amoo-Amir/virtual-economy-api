@@ -44,7 +44,18 @@ const cancelListing = async (req, res) => {
     req.user.id,
   );
 
-  return res.status(200).json(result)
+  return res.status(200).json(result);
+};
+
+const getMyListings = async (req, res) => {
+  const result = await marketService.getMyListings(
+    req.user.id,
+    req.query.page,
+    req.query.limit,
+    req.query.status,
+  );
+
+  return res.status(200).json(result);
 };
 
 module.exports = {
@@ -52,4 +63,5 @@ module.exports = {
   getListings,
   purchaseListing,
   cancelListing,
+  getMyListings,
 };

@@ -157,6 +157,43 @@ const cancelListing = async (tx, listingId, sellerId) => {
   });
 };
 
+const getMyListings = async (userId, page, limit, status) => {
+  const skip = (page - 1) * limit;
+
+  const where = {
+    seller_id: userId,
+    ...(status && { status }),
+  };
+
+  const [listings, total] = await prisma.$transaction([
+    prisma.market_listings.findMany({
+      where,
+      select: {
+        id: true,
+        item: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        quantity: true,
+        unit_price: true,
+        status: true,
+        created_at: true,
+      },
+      orderBy: [{ created_at: "desc" }, { id: "desc" }],
+      skip,
+      take: limit,
+    }),
+
+    prisma.market_listings.count({
+      where,
+    }),
+  ]);
+
+  return { listings, total };
+};
+
 module.exports = {
   getUserInventory,
   createListing,
@@ -164,5 +201,6 @@ module.exports = {
   getActiveListingById,
   claimListing,
   createMarketOrder,
-  cancelListing
+  cancelListing,
+  getMyListings,
 };

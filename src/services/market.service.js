@@ -351,9 +351,48 @@ const cancelListing = async (listingId, userId) => {
     throw error;
   }
 };
+
+const getMyListings = async (userId, page = 1, limit = 10, status) => {
+  page = Number(page);
+  limit = Number(limit);
+
+  if (!Number.isInteger(page) || page < 1) {
+    throw new ApiError(400, "Invalid page");
+  }
+
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+    throw new ApiError(400, "Invalid limit");
+  }
+
+  const allowedStatuses = ["ACTIVE", "SOLD", "CANCELLED"];
+
+  if (status && !allowedStatuses.includes(status)) {
+    throw new ApiError(400, "Invalid listing status");
+  }
+
+  const { listings, total } = await marketRepository.getMyListings(
+    userId,
+    page,
+    limit,
+    status,
+  );
+
+  return {
+    success: true,
+    data: listings,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+};
+
 module.exports = {
   createListing,
   getListings,
   purchaseListing,
   cancelListing,
+  getMyListings,
 };
