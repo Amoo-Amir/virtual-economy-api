@@ -81,9 +81,7 @@ const login = async (body) => {
     !email.trim() ||
     !password
   ) {
-    const error = new Error("Email and password are required");
-    error.statusCode = 400;
-    throw error;
+    throw new ApiError(400, "Email and password are required");
   }
 
   const normalizedEmail = email.trim().toLowerCase();
