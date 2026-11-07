@@ -1,6 +1,8 @@
 const request = require("supertest");
 const { randomUUID } = require("crypto");
 
+const marketRepository = require("../repositories/market.repository");
+
 const app = require("../app");
 const prisma = require("../config/prisma");
 
@@ -553,5 +555,70 @@ describe("Market Lifecycle API", () => {
       await request(app).get("/api/market/my-orders").expect(401);
       await request(app).get("/api/market/my-sales").expect(401);
     });
+  });
+  it("should rollback all purchase changes when market order creation fails", async () => {
+    const listingId = await createListing({
+      quantity: 2,
+      unitPrice: "10",
+    });
+
+    const [
+      listingBefore,
+      buyerWalletBefore,
+      sellerWalletBefore,
+      buyerInventoryBefore,
+      transactionCountBefore,
+      orderCountBefore,
+    ] = await Promise.all([
+      prisma.market_listings.findUnique({ where: { id: listingId } }),
+      getWallet(buyer.id),
+      getWallet(seller.id),
+      getInventory(buyer.id),
+      prisma.transactions.count(),
+      prisma.market_orders.count(),
+    ]);
+
+    const spy = jest
+      .spyOn(marketRepository, "createMarketOrder")
+      .mockRejectedValue(new Error("Forced market order failure"));
+
+    try {
+      await request(app)
+        .post(`/api/market/listings/${listingId}/purchase`)
+        .set("Authorization", `Bearer ${buyer.token}`)
+        .expect(500);
+    } finally {
+      spy.mockRestore();
+    }
+
+    const [
+      listingAfter,
+      buyerWalletAfter,
+      sellerWalletAfter,
+      buyerInventoryAfter,
+      transactionCountAfter,
+      orderCountAfter,
+    ] = await Promise.all([
+      prisma.market_listings.findUnique({ where: { id: listingId } }),
+      getWallet(buyer.id),
+      getWallet(seller.id),
+      getInventory(buyer.id),
+      prisma.transactions.count(),
+      prisma.market_orders.count(),
+    ]);
+
+    expect(listingAfter.status).toBe(listingBefore.status);
+
+    expect(buyerWalletAfter.balance.equals(buyerWalletBefore.balance)).toBe(
+      true,
+    );
+    expect(sellerWalletAfter.balance.equals(sellerWalletBefore.balance)).toBe(
+      true,
+    );
+
+    expect(buyerInventoryAfter.quantity).toBe(buyerInventoryBefore.quantity);
+
+    expect(transactionCountAfter).toBe(transactionCountBefore);
+    expect(orderCountAfter).toBe(orderCountBefore);
   });
 });

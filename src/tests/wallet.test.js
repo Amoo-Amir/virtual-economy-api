@@ -1,6 +1,8 @@
 const request = require("supertest");
 const { randomUUID } = require("crypto");
 const app = require("../app");
+const prisma = require("../config/prisma");
+const walletRepository = require("../repositories/wallet.repository");
 
 const password = "TestPassword123";
 
@@ -222,14 +224,74 @@ describe("Wallet API", () => {
     });
 
     it("should reject requests without authentication", async () => {
-      const response = await request(app)
-        .post("/api/wallet/transfer")
-        .send({
-          cardNumber: recipient.wallet.cardNumber,
-          amount: "10",
-        });
+      const response = await request(app).post("/api/wallet/transfer").send({
+        cardNumber: recipient.wallet.cardNumber,
+        amount: "10",
+      });
 
       expect(response.status).toBe(401);
     });
+  });
+  it("should rollback wallet balances and ledger when transfer transaction creation fails", async () => {
+    const amount = "50";
+
+    const [senderWalletBefore, recipientWalletBefore, transactionCountBefore] =
+      await Promise.all([
+        prisma.wallets.findUnique({
+          where: { id: sender.wallet.id },
+        }),
+        prisma.wallets.findUnique({
+          where: { id: recipient.wallet.id },
+        }),
+        prisma.transactions.count({
+          where: { type: "TRANSFER" },
+        }),
+      ]);
+
+    const originalMethod = walletRepository.createTransferTransaction;
+
+    const spy = jest
+      .spyOn(walletRepository, "createTransferTransaction")
+      .mockImplementation(async (...args) => {
+        await originalMethod(...args);
+
+        throw new Error("Forced transfer transaction failure");
+      });
+
+    try {
+      await request(app)
+        .post("/api/wallet/transfer")
+        .set("Authorization", `Bearer ${sender.token}`)
+        .send({
+          cardNumber: recipient.wallet.cardNumber,
+          amount,
+        })
+        .expect(500);
+    } finally {
+      spy.mockRestore();
+    }
+
+    const [senderWalletAfter, recipientWalletAfter, transactionCountAfter] =
+      await Promise.all([
+        prisma.wallets.findUnique({
+          where: { id: sender.wallet.id },
+        }),
+        prisma.wallets.findUnique({
+          where: { id: recipient.wallet.id },
+        }),
+        prisma.transactions.count({
+          where: { type: "TRANSFER" },
+        }),
+      ]);
+
+    expect(senderWalletAfter.balance.equals(senderWalletBefore.balance)).toBe(
+      true,
+    );
+
+    expect(
+      recipientWalletAfter.balance.equals(recipientWalletBefore.balance),
+    ).toBe(true);
+
+    expect(transactionCountAfter).toBe(transactionCountBefore);
   });
 });
