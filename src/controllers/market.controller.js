@@ -68,6 +68,16 @@ const getMyOrders = async (req, res) => {
   return res.status(200).json(result);
 };
 
+const getMySells = async (req, res) => {
+  const result = await marketService.getMySells(
+    req.user.id,
+    req.query.page,
+    req.query.limit,
+  );
+
+  return res.status(200).json(result);
+};
+
 module.exports = {
   createListing,
   getListings,
@@ -75,4 +85,5 @@ module.exports = {
   cancelListing,
   getMyListings,
   getMyOrders,
+  getMySells,
 };

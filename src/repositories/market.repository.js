@@ -238,6 +238,50 @@ const getMyOrders = async (userId, page, limit) => {
   return { orders, total };
 };
 
+const getMySells = async (userId, page, limit) => {
+  const skip = (page - 1) * limit;
+
+  const where = {
+    seller_id: userId,
+  };
+
+  const [sells, total] = await prisma.$transaction([
+    prisma.market_orders.findMany({
+      where,
+      select: {
+        id: true,
+        listing_id: true,
+        buyer: {
+          select: {
+            id: true,
+          },
+        },
+        listing: {
+          select: {
+            item: {
+              select: {
+                id: true,
+                name: true,
+              },
+            },
+          },
+        },
+        quantity: true,
+        unit_price: true,
+        total_price: true,
+        created_at: true,
+      },
+      orderBy: [{ created_at: "desc" }, { id: "desc" }],
+      skip,
+      take: limit,
+    }),
+
+    prisma.market_orders.count({ where }),
+  ]);
+
+  return { sells, total };
+};
+
 module.exports = {
   getUserInventory,
   createListing,
@@ -248,4 +292,5 @@ module.exports = {
   cancelListing,
   getMyListings,
   getMyOrders,
+  getMySells,
 };
