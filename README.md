@@ -1,3 +1,4 @@
+[فارسی](README.fa.md)
 # Virtual Economy Backend
 
 A REST API backend for a virtual economy platform. Users can manage their wallets, transfer virtual credits, manage digital items, and trade items through a marketplace.
