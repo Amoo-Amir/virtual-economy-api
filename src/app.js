@@ -1,5 +1,6 @@
 const express = require("express");
-const { pool } = require("./config/db");
+const prisma = require("./config/prisma");
+
 const authRouter = require("./routers/auth.route");
 const walletRouter = require("./routers/wallet.route");
 const transactionRouter = require("./routers/transaction.route");
@@ -20,16 +21,16 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.get("/health", async (req, res) => {
   try {
-    const result = await pool.query(`
+    const result = await prisma.$queryRaw`
       SELECT
         NOW() AS database_time,
         current_database() AS database_name
-    `);
+    `;
 
     res.status(200).json({
       status: "ok",
       database: "connected",
-      ...result.rows[0],
+      ...result[0],
     });
   } catch (error) {
     console.error("Database query failed:", error.message);

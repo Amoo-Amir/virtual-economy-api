@@ -1,4 +1,3 @@
-
 const swaggerJsdoc = require("swagger-jsdoc");
 
 const options = {
@@ -8,18 +7,8 @@ const options = {
     info: {
       title: "Virtual Economy Wallet API",
       version: "1.0.0",
-      description: `
-REST API for a virtual game economy.
-
-Features:
-- User authentication with JWT
-- Virtual wallets and balance transfers
-- Transaction history
-- Game items and inventory
-- Player marketplace
-
-This API uses virtual currency. It does not process real-money payments.
-      `,
+      description:
+        "REST API for a virtual game economy, including wallets, inventory, transactions and a player marketplace. This API does not handle real money.",
     },
 
     servers: [
@@ -30,13 +19,19 @@ This API uses virtual currency. It does not process real-money payments.
     ],
 
     tags: [
-      { name: "Health", description: "Application health" },
-      { name: "Authentication", description: "User registration and login" },
+      { name: "Health", description: "API and database health" },
+      { name: "Authentication", description: "User authentication" },
       { name: "Wallet", description: "Virtual wallet operations" },
       { name: "Transactions", description: "Wallet transaction history" },
       { name: "Items", description: "Available game items" },
       { name: "Inventory", description: "Player inventory" },
-      { name: "Market", description: "Player marketplace" },
+      { name: "Market", description: "Player-to-player marketplace" },
+    ],
+
+    security: [
+      {
+        bearerAuth: [],
+      },
     ],
 
     components: {
@@ -45,7 +40,7 @@ This API uses virtual currency. It does not process real-money payments.
           type: "http",
           scheme: "bearer",
           bearerFormat: "JWT",
-          description: "Enter the JWT token returned by the login endpoint.",
+          description: "Enter your JWT access token.",
         },
       },
 
@@ -60,6 +55,22 @@ This API uses virtual currency. It does not process real-money payments.
             message: {
               type: "string",
               example: "Invalid request",
+            },
+          },
+          required: ["status", "message"],
+        },
+
+        User: {
+          type: "object",
+          properties: {
+            id: {
+              type: "string",
+              format: "uuid",
+            },
+            email: {
+              type: "string",
+              format: "email",
+              example: "player@example.com",
             },
           },
         },
@@ -79,22 +90,42 @@ This API uses virtual currency. It does not process real-money payments.
               minLength: 8,
               maxLength: 72,
               description:
-                "Registration password. Maximum length is 72 UTF-8 bytes.",
+                "Password must contain at least 8 characters and must not exceed 72 UTF-8 bytes.",
               example: "StrongPassword123",
             },
           },
         },
 
-        User: {
+        LoginCredentials: {
           type: "object",
+          required: ["email", "password"],
           properties: {
-            id: {
-              type: "string",
-              format: "uuid",
-            },
             email: {
               type: "string",
               format: "email",
+              maxLength: 254,
+              example: "player@example.com",
+            },
+            password: {
+              type: "string",
+              example: "StrongPassword123",
+            },
+          },
+        },
+
+        AuthResponse: {
+          type: "object",
+          properties: {
+            status: {
+              type: "string",
+              example: "ok",
+            },
+            token: {
+              type: "string",
+              description: "JWT access token",
+            },
+            user: {
+              $ref: "#/components/schemas/User",
             },
           },
         },
@@ -102,10 +133,6 @@ This API uses virtual currency. It does not process real-money payments.
         Pagination: {
           type: "object",
           properties: {
-            currentPage: {
-              type: "integer",
-              example: 1,
-            },
             page: {
               type: "integer",
               example: 1,
@@ -114,7 +141,7 @@ This API uses virtual currency. It does not process real-money payments.
               type: "integer",
               example: 10,
             },
-            totalItems: {
+            total: {
               type: "integer",
               example: 25,
             },
@@ -137,14 +164,15 @@ This API uses virtual currency. It does not process real-money payments.
               type: "integer",
               minimum: 1,
               maximum: 2147483647,
-              example: 2,
+              example: 5,
             },
             unitPrice: {
               type: "string",
               pattern:
                 "^(?=.*[1-9])(?:0|[1-9][0-9]{0,17})(?:\\.[0-9]{1,18})?$",
               example: "25.50",
-              description: "Positive decimal price.",
+              description:
+                "Positive decimal amount represented as a string.",
             },
           },
         },
@@ -158,7 +186,6 @@ This API uses virtual currency. It does not process real-money payments.
             },
             item: {
               type: "object",
-              description: "The listed item and its returned properties.",
               additionalProperties: true,
             },
             seller: {
@@ -172,7 +199,6 @@ This API uses virtual currency. It does not process real-money payments.
             },
             quantity: {
               type: "integer",
-              example: 2,
             },
             unitPrice: {
               type: "string",
@@ -180,11 +206,259 @@ This API uses virtual currency. It does not process real-money payments.
             },
             status: {
               type: "string",
-              example: "ACTIVE",
+              enum: ["ACTIVE", "SOLD", "CANCELLED"],
             },
             createdAt: {
               type: "string",
               format: "date-time",
+            },
+          },
+        },
+
+        ListingCreateResponse: {
+          type: "object",
+          properties: {
+            status: {
+              type: "string",
+              example: "ok",
+            },
+            listing: {
+              $ref: "#/components/schemas/MarketListing",
+            },
+          },
+        },
+
+        MarketPurchaseResponse: {
+          type: "object",
+          properties: {
+            listingId: {
+              type: "string",
+              format: "uuid",
+            },
+            orderId: {
+              type: "string",
+              format: "uuid",
+            },
+            transactionId: {
+              type: "string",
+              format: "uuid",
+            },
+            item: {
+              type: "object",
+              properties: {
+                id: {
+                  type: "string",
+                  format: "uuid",
+                },
+                name: {
+                  type: "string",
+                },
+                quantity: {
+                  type: "integer",
+                },
+              },
+            },
+            totalPrice: {
+              type: "string",
+              example: "125.00",
+            },
+            assetCode: {
+              type: "string",
+              example: "USD",
+            },
+            status: {
+              type: "string",
+              example: "SOLD",
+            },
+          },
+        },
+
+        CancelListingResponse: {
+          type: "object",
+          properties: {
+            listingId: {
+              type: "string",
+              format: "uuid",
+            },
+            status: {
+              type: "string",
+              example: "CANCELLED",
+            },
+            returnedItem: {
+              type: "object",
+              properties: {
+                itemId: {
+                  type: "string",
+                  format: "uuid",
+                },
+                quantity: {
+                  type: "integer",
+                },
+              },
+            },
+          },
+        },
+
+        TransferInput: {
+          type: "object",
+          required: ["cardNumber", "amount"],
+          properties: {
+            cardNumber: {
+              type: "string",
+              pattern: "^\\d{12}$",
+              example: "123456789012",
+            },
+            amount: {
+              type: "string",
+              pattern:
+                "^(?:0|[1-9][0-9]{0,17})(?:\\.[0-9]{1,18})?$",
+              example: "50.00",
+              description: "Must be greater than zero.",
+            },
+          },
+        },
+
+        TransferResponse: {
+          type: "object",
+          properties: {
+            success: {
+              type: "boolean",
+              example: true,
+            },
+            message: {
+              type: "string",
+              example: "Transfer completed successfully",
+            },
+            data: {
+              type: "object",
+              properties: {
+                amount: {
+                  type: "string",
+                  example: "50.00",
+                },
+                assetCode: {
+                  type: "string",
+                  example: "USD",
+                },
+                senderBalance: {
+                  type: "string",
+                  example: "150.00",
+                },
+                transactionId: {
+                  type: "string",
+                  format: "uuid",
+                },
+              },
+            },
+          },
+        },
+
+        ResolveCardInput: {
+          type: "object",
+          required: ["cardNumber"],
+          properties: {
+            cardNumber: {
+              type: "string",
+              pattern: "^\\d{12}$",
+              example: "123456789012",
+            },
+          },
+        },
+
+        PaginationResult: {
+          type: "object",
+          properties: {
+            currentPage: {
+              type: "integer",
+            },
+            limit: {
+              type: "integer",
+            },
+            totalItems: {
+              type: "integer",
+            },
+            totalPages: {
+              type: "integer",
+            },
+          },
+        },
+
+        GenericObject: {
+          type: "object",
+          description:
+            "Response object. Additional properties depend on the returned resource.",
+          additionalProperties: true,
+        },
+
+        GenericListResponse: {
+          type: "object",
+          additionalProperties: true,
+        },
+      },
+
+      responses: {
+        BadRequest: {
+          description: "Invalid request or parameters",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/Error",
+              },
+            },
+          },
+        },
+
+        Unauthorized: {
+          description: "Authentication required or invalid token",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/Error",
+              },
+            },
+          },
+        },
+
+        Forbidden: {
+          description: "You are not allowed to perform this operation",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/Error",
+              },
+            },
+          },
+        },
+
+        NotFound: {
+          description: "Requested resource was not found",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/Error",
+              },
+            },
+          },
+        },
+
+        Conflict: {
+          description: "Resource conflict",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/Error",
+              },
+            },
+          },
+        },
+
+        InternalServerError: {
+          description: "Internal server error",
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/Error",
+              },
             },
           },
         },
@@ -195,17 +469,23 @@ This API uses virtual currency. It does not process real-money payments.
       "/health": {
         get: {
           tags: ["Health"],
-          summary: "Check application and database health",
+          summary: "Check API and database health",
           responses: {
             200: {
-              description: "Database connection is working.",
+              description: "API and database are healthy",
               content: {
                 "application/json": {
                   schema: {
                     type: "object",
                     properties: {
-                      status: { type: "string", example: "ok" },
-                      database: { type: "string", example: "connected" },
+                      status: {
+                        type: "string",
+                        example: "ok",
+                      },
+                      database: {
+                        type: "string",
+                        example: "connected",
+                      },
                       database_time: {
                         type: "string",
                         format: "date-time",
@@ -220,12 +500,7 @@ This API uses virtual currency. It does not process real-money payments.
               },
             },
             500: {
-              description: "Database connection failed.",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
-                },
-              },
+              $ref: "#/components/responses/InternalServerError",
             },
           },
         },
@@ -235,46 +510,52 @@ This API uses virtual currency. It does not process real-money payments.
         post: {
           tags: ["Authentication"],
           summary: "Register a new user",
-          description:
-            "Creates a user and initializes their virtual wallet with the initial credit.",
+          security: [],
           requestBody: {
             required: true,
             content: {
               "application/json": {
-                schema: { $ref: "#/components/schemas/Credentials" },
+                schema: {
+                  $ref: "#/components/schemas/Credentials",
+                },
               },
             },
           },
           responses: {
             201: {
-              description: "User successfully registered.",
+              description: "User registered successfully",
               content: {
                 "application/json": {
                   schema: {
                     type: "object",
                     properties: {
-                      status: { type: "string", example: "ok" },
-                      user: { $ref: "#/components/schemas/User" },
+                      status: {
+                        type: "string",
+                        example: "ok",
+                      },
+                      user: {
+                        $ref: "#/components/schemas/User",
+                      },
                     },
                   },
                 },
               },
             },
             400: {
-              description: "Invalid registration data.",
+              $ref: "#/components/responses/BadRequest",
+            },
+            409: {
+              description: "Email is already registered",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
+                  schema: {
+                    $ref: "#/components/schemas/Error",
+                  },
                 },
               },
             },
-            409: {
-              description: "Email is already registered.",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
-                },
-              },
+            500: {
+              $ref: "#/components/responses/InternalServerError",
             },
           },
         },
@@ -283,53 +564,39 @@ This API uses virtual currency. It does not process real-money payments.
       "/api/auth/login": {
         post: {
           tags: ["Authentication"],
-          summary: "Login",
+          security: [],
+          summary: "Login and receive an access token",
           requestBody: {
             required: true,
             content: {
               "application/json": {
                 schema: {
-                  type: "object",
-                  required: ["email", "password"],
-                  properties: {
-                    email: {
-                      type: "string",
-                      format: "email",
-                      example: "player@example.com",
-                    },
-                    password: {
-                      type: "string",
-                      example: "StrongPassword123",
-                    },
-                  },
+                  $ref: "#/components/schemas/LoginCredentials",
                 },
               },
             },
           },
           responses: {
             200: {
-              description: "Login successful.",
+              description: "Login successful",
               content: {
                 "application/json": {
                   schema: {
-                    type: "object",
-                    properties: {
-                      status: { type: "string", example: "ok" },
-                      token: {
-                        type: "string",
-                        description: "JWT access token.",
-                      },
-                      user: { $ref: "#/components/schemas/User" },
-                    },
+                    $ref: "#/components/schemas/AuthResponse",
                   },
                 },
               },
             },
+            400: {
+              $ref: "#/components/responses/BadRequest",
+            },
             401: {
-              description: "Invalid email or password.",
+              description: "Invalid email or password",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
+                  schema: {
+                    $ref: "#/components/schemas/Error",
+                  },
                 },
               },
             },
@@ -340,29 +607,61 @@ This API uses virtual currency. It does not process real-money payments.
       "/api/auth/profile": {
         get: {
           tags: ["Authentication"],
-          summary: "Get current user profile",
+          summary: "Get the authenticated user's profile",
           security: [{ bearerAuth: [] }],
           responses: {
             200: {
-              description: "User profile.",
+              description: "User profile",
               content: {
                 "application/json": {
                   schema: {
-                    type: "object",
-                    description:
-                      "Profile returned by the user repository.",
-                    additionalProperties: true,
+                    $ref: "#/components/schemas/GenericObject",
                   },
                 },
               },
             },
             401: {
-              description: "Authentication required or token invalid.",
+              $ref: "#/components/responses/Unauthorized",
+            },
+            404: {
+              $ref: "#/components/responses/NotFound",
+            },
+          },
+        },
+      },
+
+      "/api/auth/{userId}": {
+        get: {
+          tags: ["Authentication"],
+          summary: "Get a user by ID",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: "userId",
+              in: "path",
+              required: true,
+              schema: {
+                type: "string",
+                format: "uuid",
+              },
+            },
+          ],
+          responses: {
+            200: {
+              description: "User information",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
+                  schema: {
+                    $ref: "#/components/schemas/User",
+                  },
                 },
               },
+            },
+            401: {
+              $ref: "#/components/responses/Unauthorized",
+            },
+            404: {
+              $ref: "#/components/responses/NotFound",
             },
           },
         },
@@ -371,24 +670,24 @@ This API uses virtual currency. It does not process real-money payments.
       "/api/wallet/myWallet": {
         get: {
           tags: ["Wallet"],
-          summary: "Get current user's wallets",
+          summary: "Get the authenticated user's wallets",
           security: [{ bearerAuth: [] }],
           responses: {
             200: {
-              description: "Wallet information.",
+              description: "Wallet information",
               content: {
                 "application/json": {
                   schema: {
                     type: "object",
                     properties: {
-                      status: { type: "string", example: "ok" },
+                      status: {
+                        type: "string",
+                        example: "ok",
+                      },
                       wallets: {
                         type: "array",
                         items: {
-                          type: "object",
-                          description:
-                            "Wallet fields returned by the wallet repository.",
-                          additionalProperties: true,
+                          $ref: "#/components/schemas/GenericObject",
                         },
                       },
                     },
@@ -397,12 +696,7 @@ This API uses virtual currency. It does not process real-money payments.
               },
             },
             401: {
-              description: "Authentication required.",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
-                },
-              },
+              $ref: "#/components/responses/Unauthorized",
             },
           },
         },
@@ -411,29 +705,21 @@ This API uses virtual currency. It does not process real-money payments.
       "/api/wallet/resolve-card": {
         post: {
           tags: ["Wallet"],
-          summary: "Resolve a recipient card",
+          summary: "Resolve a recipient card number",
           security: [{ bearerAuth: [] }],
           requestBody: {
             required: true,
             content: {
               "application/json": {
                 schema: {
-                  type: "object",
-                  required: ["cardNumber"],
-                  properties: {
-                    cardNumber: {
-                      type: "string",
-                      pattern: "^[0-9]{12}$",
-                      example: "123456789012",
-                    },
-                  },
+                  $ref: "#/components/schemas/ResolveCardInput",
                 },
               },
             },
           },
           responses: {
             200: {
-              description: "Recipient information.",
+              description: "Recipient information",
               content: {
                 "application/json": {
                   schema: {
@@ -442,7 +728,9 @@ This API uses virtual currency. It does not process real-money payments.
                       recipient: {
                         type: "object",
                         properties: {
-                          name: { type: "string" },
+                          name: {
+                            type: "string",
+                          },
                           cardNumber: {
                             type: "string",
                             example: "********9012",
@@ -455,20 +743,13 @@ This API uses virtual currency. It does not process real-money payments.
               },
             },
             400: {
-              description: "Invalid card or self-transfer.",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
-                },
-              },
+              $ref: "#/components/responses/BadRequest",
+            },
+            401: {
+              $ref: "#/components/responses/Unauthorized",
             },
             404: {
-              description: "Recipient wallet not found.",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
-                },
-              },
+              $ref: "#/components/responses/NotFound",
             },
           },
         },
@@ -477,80 +758,37 @@ This API uses virtual currency. It does not process real-money payments.
       "/api/wallet/transfer": {
         post: {
           tags: ["Wallet"],
-          summary: "Transfer virtual balance",
+          summary: "Transfer virtual currency to another user",
           security: [{ bearerAuth: [] }],
           requestBody: {
             required: true,
             content: {
               "application/json": {
                 schema: {
-                  type: "object",
-                  required: ["cardNumber", "amount"],
-                  properties: {
-                    cardNumber: {
-                      type: "string",
-                      pattern: "^[0-9]{12}$",
-                      example: "123456789012",
-                    },
-                    amount: {
-                      type: "string",
-                      example: "25.50",
-                      description: "Positive decimal amount.",
-                    },
-                  },
+                  $ref: "#/components/schemas/TransferInput",
                 },
               },
             },
           },
           responses: {
             200: {
-              description: "Transfer completed.",
+              description: "Transfer completed",
               content: {
                 "application/json": {
                   schema: {
-                    type: "object",
-                    properties: {
-                      success: { type: "boolean", example: true },
-                      message: {
-                        type: "string",
-                        example: "Transfer completed successfully",
-                      },
-                      data: {
-                        type: "object",
-                        properties: {
-                          amount: { type: "string", example: "25.50" },
-                          assetCode: { type: "string", example: "USD" },
-                          senderBalance: {
-                            type: "string",
-                            example: "174.50",
-                          },
-                          transactionId: {
-                            type: "string",
-                            format: "uuid",
-                          },
-                        },
-                      },
-                    },
+                    $ref: "#/components/schemas/TransferResponse",
                   },
                 },
               },
             },
             400: {
-              description:
-                "Invalid amount/card, self-transfer, currency mismatch, or insufficient balance.",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
-                },
-              },
+              $ref: "#/components/responses/BadRequest",
+            },
+            401: {
+              $ref: "#/components/responses/Unauthorized",
             },
             404: {
-              description: "Sender or recipient wallet not found.",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
-                },
-              },
+              $ref: "#/components/responses/NotFound",
             },
           },
         },
@@ -559,70 +797,48 @@ This API uses virtual currency. It does not process real-money payments.
       "/api/transactions": {
         get: {
           tags: ["Transactions"],
-          summary: "Get current user's transaction history",
+          summary: "Get the authenticated user's transaction history",
           security: [{ bearerAuth: [] }],
           parameters: [
             {
               name: "page",
               in: "query",
-              schema: { type: "integer", minimum: 1, default: 1 },
+              schema: {
+                type: "integer",
+                minimum: 1,
+                default: 1,
+              },
             },
             {
               name: "limit",
               in: "query",
-              schema: { type: "integer", minimum: 1, maximum: 100, default: 10 },
+              schema: {
+                type: "integer",
+                minimum: 1,
+                maximum: 100,
+                default: 10,
+              },
             },
           ],
           responses: {
             200: {
-              description: "Transaction history and pagination.",
+              description: "Transaction history",
               content: {
                 "application/json": {
                   schema: {
-                    type: "object",
-                    properties: {
-                      success: { type: "boolean", example: true },
-                      data: {
-                        type: "object",
-                        properties: {
-                          transactions: {
-                            type: "array",
-                            items: {
-                              type: "object",
-                              additionalProperties: true,
-                            },
-                          },
-                          pagination: {
-                            type: "object",
-                            properties: {
-                              currentPage: { type: "integer" },
-                              limit: { type: "integer" },
-                              totalItems: { type: "integer" },
-                              totalPages: { type: "integer" },
-                            },
-                          },
-                        },
-                      },
-                    },
+                    $ref: "#/components/schemas/GenericObject",
                   },
                 },
               },
             },
+            401: {
+              $ref: "#/components/responses/Unauthorized",
+            },
             400: {
-              description: "Invalid pagination parameters.",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
-                },
-              },
+              $ref: "#/components/responses/BadRequest",
             },
             404: {
-              description: "Wallet not found.",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
-                },
-              },
+              $ref: "#/components/responses/NotFound",
             },
           },
         },
@@ -637,23 +853,33 @@ This API uses virtual currency. It does not process real-money payments.
             {
               name: "page",
               in: "query",
-              schema: { type: "integer", minimum: 1, default: 1 },
+              schema: {
+                type: "integer",
+                minimum: 1,
+                default: 1,
+              },
             },
             {
               name: "limit",
               in: "query",
-              schema: { type: "integer", minimum: 1, maximum: 50, default: 10 },
+              schema: {
+                type: "integer",
+                minimum: 1,
+                maximum: 50,
+                default: 10,
+              },
             },
             {
               name: "search",
               in: "query",
-              schema: { type: "string" },
-              description: "Search items by name.",
+              schema: {
+                type: "string",
+              },
             },
           ],
           responses: {
             200: {
-              description: "Active items and pagination.",
+              description: "Active items and pagination",
               content: {
                 "application/json": {
                   schema: {
@@ -662,17 +888,24 @@ This API uses virtual currency. It does not process real-money payments.
                       items: {
                         type: "array",
                         items: {
-                          type: "object",
-                          additionalProperties: true,
+                          $ref: "#/components/schemas/GenericObject",
                         },
                       },
                       pagination: {
                         type: "object",
                         properties: {
-                          page: { type: "integer" },
-                          limit: { type: "integer" },
-                          totalItems: { type: "integer" },
-                          totalPages: { type: "integer" },
+                          page: {
+                            type: "integer",
+                          },
+                          limit: {
+                            type: "integer",
+                          },
+                          totalItems: {
+                            type: "integer",
+                          },
+                          totalPages: {
+                            type: "integer",
+                          },
                         },
                       },
                     },
@@ -681,12 +914,10 @@ This API uses virtual currency. It does not process real-money payments.
               },
             },
             400: {
-              description: "Invalid query parameters.",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
-                },
-              },
+              $ref: "#/components/responses/BadRequest",
+            },
+            401: {
+              $ref: "#/components/responses/Unauthorized",
             },
           },
         },
@@ -695,39 +926,24 @@ This API uses virtual currency. It does not process real-money payments.
       "/api/inventory/myINV": {
         get: {
           tags: ["Inventory"],
-          summary: "Get current user's inventory",
+          summary: "Get the authenticated user's inventory",
           security: [{ bearerAuth: [] }],
           responses: {
             200: {
-              description: "Player inventory.",
+              description: "User inventory",
               content: {
                 "application/json": {
                   schema: {
-                    type: "object",
-                    properties: {
-                      items: {
-                        type: "array",
-                        items: {
-                          type: "object",
-                          additionalProperties: true,
-                        },
-                      },
-                      totalItems: {
-                        type: "integer",
-                        example: 2,
-                      },
-                    },
+                    $ref: "#/components/schemas/GenericObject",
                   },
                 },
               },
             },
             401: {
-              description: "Authentication required.",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
-                },
-              },
+              $ref: "#/components/responses/Unauthorized",
+            },
+            404: {
+              $ref: "#/components/responses/NotFound",
             },
           },
         },
@@ -736,38 +952,58 @@ This API uses virtual currency. It does not process real-money payments.
       "/api/market/listings": {
         get: {
           tags: ["Market"],
+          security: [],
           summary: "Get active marketplace listings",
           parameters: [
             {
               name: "page",
               in: "query",
-              schema: { type: "integer", minimum: 1, default: 1 },
+              schema: {
+                type: "integer",
+                minimum: 1,
+                default: 1,
+              },
             },
             {
               name: "limit",
               in: "query",
-              schema: { type: "integer", minimum: 1, maximum: 50, default: 10 },
+              schema: {
+                type: "integer",
+                minimum: 1,
+                maximum: 50,
+                default: 10,
+              },
             },
             {
               name: "search",
               in: "query",
-              schema: { type: "string" },
-              description: "Search listings by item name.",
+              schema: {
+                type: "string",
+              },
             },
             {
               name: "itemId",
               in: "query",
-              schema: { type: "string", format: "uuid" },
+              schema: {
+                type: "string",
+                format: "uuid",
+              },
             },
             {
               name: "minPrice",
               in: "query",
-              schema: { type: "string", example: "10.00" },
+              schema: {
+                type: "string",
+                example: "10.00",
+              },
             },
             {
               name: "maxPrice",
               in: "query",
-              schema: { type: "string", example: "100.00" },
+              schema: {
+                type: "string",
+                example: "100.00",
+              },
             },
             {
               name: "sortBy",
@@ -790,13 +1026,16 @@ This API uses virtual currency. It does not process real-money payments.
           ],
           responses: {
             200: {
-              description: "Active listings and pagination.",
+              description: "Active listings",
               content: {
                 "application/json": {
                   schema: {
                     type: "object",
                     properties: {
-                      status: { type: "string", example: "ok" },
+                      status: {
+                        type: "string",
+                        example: "ok",
+                      },
                       data: {
                         type: "object",
                         properties: {
@@ -809,10 +1048,18 @@ This API uses virtual currency. It does not process real-money payments.
                           pagination: {
                             type: "object",
                             properties: {
-                              currentPage: { type: "integer" },
-                              limit: { type: "integer" },
-                              totalItems: { type: "integer" },
-                              totalPages: { type: "integer" },
+                              currentPage: {
+                                type: "integer",
+                              },
+                              limit: {
+                                type: "integer",
+                              },
+                              totalItems: {
+                                type: "integer",
+                              },
+                              totalPages: {
+                                type: "integer",
+                              },
                             },
                           },
                         },
@@ -823,12 +1070,10 @@ This API uses virtual currency. It does not process real-money payments.
               },
             },
             400: {
-              description: "Invalid filters, pagination, or sorting.",
-              content: {
-                "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
-                },
-              },
+              $ref: "#/components/responses/BadRequest",
+            },
+            500: {
+              $ref: "#/components/responses/InternalServerError",
             },
           },
         },
@@ -836,75 +1081,271 @@ This API uses virtual currency. It does not process real-money payments.
         post: {
           tags: ["Market"],
           summary: "Create a marketplace listing",
-          description:
-            "Creates a listing and deducts the listed quantity from the seller's inventory.",
           security: [{ bearerAuth: [] }],
           requestBody: {
             required: true,
             content: {
               "application/json": {
-                schema: { $ref: "#/components/schemas/ListingInput" },
+                schema: {
+                  $ref: "#/components/schemas/ListingInput",
+                },
               },
             },
           },
           responses: {
             201: {
-              description: "Listing successfully created.",
+              description: "Listing created",
               content: {
                 "application/json": {
                   schema: {
-                    type: "object",
-                    properties: {
-                      status: { type: "string", example: "ok" },
-                      listing: {
-                        type: "object",
-                        properties: {
-                          id: {
-                            type: "string",
-                            format: "uuid",
-                          },
-                          item: {
-                            type: "object",
-                            additionalProperties: true,
-                          },
-                          quantity: { type: "integer", example: 2 },
-                          unitPrice: { type: "string", example: "25.50" },
-                          status: { type: "string", example: "ACTIVE" },
-                          createdAt: {
-                            type: "string",
-                            format: "date-time",
-                          },
-                        },
-                      },
-                    },
+                    $ref: "#/components/schemas/ListingCreateResponse",
                   },
                 },
               },
             },
             400: {
-              description:
-                "Invalid listing data, insufficient inventory, or unavailable item.",
+              $ref: "#/components/responses/BadRequest",
+            },
+            401: {
+              $ref: "#/components/responses/Unauthorized",
+            },
+            409: {
+              $ref: "#/components/responses/Conflict",
+            },
+          },
+        },
+      },
+
+      "/api/market/listings/{listingId}/purchase": {
+        post: {
+          tags: ["Market"],
+          summary: "Purchase an active marketplace listing",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: "listingId",
+              in: "path",
+              required: true,
+              schema: {
+                type: "string",
+                format: "uuid",
+              },
+            },
+          ],
+          responses: {
+            200: {
+              description: "Listing purchased successfully",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
+                  schema: {
+                    $ref: "#/components/schemas/MarketPurchaseResponse",
+                  },
+                },
+              },
+            },
+            400: {
+              $ref: "#/components/responses/BadRequest",
+            },
+            401: {
+              $ref: "#/components/responses/Unauthorized",
+            },
+            404: {
+              $ref: "#/components/responses/NotFound",
+            },
+            409: {
+              $ref: "#/components/responses/Conflict",
+            },
+          },
+        },
+      },
+
+      "/api/market/listings/{listingId}/cancel": {
+        post: {
+          tags: ["Market"],
+          summary: "Cancel your own active listing",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: "listingId",
+              in: "path",
+              required: true,
+              schema: {
+                type: "string",
+                format: "uuid",
+              },
+            },
+          ],
+          responses: {
+            200: {
+              description: "Listing cancelled and items returned",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/CancelListingResponse",
+                  },
                 },
               },
             },
             401: {
-              description: "Authentication required.",
+              $ref: "#/components/responses/Unauthorized",
+            },
+            403: {
+              $ref: "#/components/responses/Forbidden",
+            },
+            404: {
+              $ref: "#/components/responses/NotFound",
+            },
+            409: {
+              $ref: "#/components/responses/Conflict",
+            },
+          },
+        },
+      },
+
+      "/api/market/my-listings": {
+        get: {
+          tags: ["Market"],
+          summary: "Get your marketplace listings",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: "page",
+              in: "query",
+              schema: {
+                type: "integer",
+                minimum: 1,
+                default: 1,
+              },
+            },
+            {
+              name: "limit",
+              in: "query",
+              schema: {
+                type: "integer",
+                minimum: 1,
+                maximum: 100,
+                default: 10,
+              },
+            },
+            {
+              name: "status",
+              in: "query",
+              schema: {
+                type: "string",
+                enum: ["ACTIVE", "SOLD", "CANCELLED"],
+              },
+            },
+          ],
+          responses: {
+            200: {
+              description: "Your listings",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
+                  schema: {
+                    $ref: "#/components/schemas/GenericObject",
+                  },
                 },
               },
             },
-            409: {
-              description: "Inventory changed during listing creation.",
+            400: {
+              $ref: "#/components/responses/BadRequest",
+            },
+            401: {
+              $ref: "#/components/responses/Unauthorized",
+            },
+          },
+        },
+      },
+
+      "/api/market/my-orders": {
+        get: {
+          tags: ["Market"],
+          summary: "Get your marketplace purchases",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: "page",
+              in: "query",
+              schema: {
+                type: "integer",
+                minimum: 1,
+                default: 1,
+              },
+            },
+            {
+              name: "limit",
+              in: "query",
+              schema: {
+                type: "integer",
+                minimum: 1,
+                maximum: 100,
+                default: 10,
+              },
+            },
+          ],
+          responses: {
+            200: {
+              description: "Your purchase orders",
               content: {
                 "application/json": {
-                  schema: { $ref: "#/components/schemas/Error" },
+                  schema: {
+                    $ref: "#/components/schemas/GenericObject",
+                  },
                 },
               },
+            },
+            400: {
+              $ref: "#/components/responses/BadRequest",
+            },
+            401: {
+              $ref: "#/components/responses/Unauthorized",
+            },
+          },
+        },
+      },
+
+      "/api/market/my-sales": {
+        get: {
+          tags: ["Market"],
+          summary: "Get your marketplace sales",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              name: "page",
+              in: "query",
+              schema: {
+                type: "integer",
+                minimum: 1,
+                default: 1,
+              },
+            },
+            {
+              name: "limit",
+              in: "query",
+              schema: {
+                type: "integer",
+                minimum: 1,
+                maximum: 100,
+                default: 10,
+              },
+            },
+          ],
+          responses: {
+            200: {
+              description: "Your sales",
+              content: {
+                "application/json": {
+                  schema: {
+                    $ref: "#/components/schemas/GenericObject",
+                  },
+                },
+              },
+            },
+            400: {
+              $ref: "#/components/responses/BadRequest",
+            },
+            401: {
+              $ref: "#/components/responses/Unauthorized",
             },
           },
         },
@@ -915,6 +1356,4 @@ This API uses virtual currency. It does not process real-money payments.
   apis: [],
 };
 
-const swaggerSpec = swaggerJsdoc(options);
-
-module.exports = swaggerSpec;
+module.exports = swaggerJsdoc(options);
